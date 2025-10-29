@@ -5,9 +5,11 @@
 
 static struct can2040 cbus;
 
+QueueHandle_t msgs;
 static void can2040_cb(struct can2040 *cd, uint32_t notify, struct can2040_msg *msg)
 {
     // Put your code here....
+    xQueueSendToBack(msgs, msg, portMAX_DELAY);
 }
 
 static void PIOx_IRQHandler(void)
@@ -32,4 +34,22 @@ void canbus_setup(void)
 
     // Start canbus
     can2040_start(&cbus, sys_clock, bitrate, gpio_rx, gpio_tx);
+}
+void main_task(__unused void *params)
+{
+    struct can2040_msg data;
+    xQueueReceive(msgs, &data, portMAX_DELAY);
+    printf("Got message\n");
+}
+
+int main(void)
+{
+    stdio_init_all();
+    msgs = xQueueCreate(100, sizeof(struct can2040_msg));
+    canbus_setup();
+    TaskHandle_t task;
+    xTaskCreate(main_task, "MainThread",
+                configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1UL, &task);
+    vTaskStartScheduler();
+    return 0;
 }
