@@ -2,6 +2,9 @@
 #include <hardware/regs/intctrl.h>
 #include <stdio.h>
 #include <pico/stdlib.h>
+#include "FreeRTOS.h"
+#include "task.h"
+#include <queue.h>
 
 static struct can2040 cbus;
 
