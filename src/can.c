@@ -5,13 +5,16 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include <queue.h>
+#include "pico/cyw43_arch.h"
 
 static struct can2040 cbus;
 
+bool on;
+
 QueueHandle_t msgs;
+
 static void can2040_cb(struct can2040 *cd, uint32_t notify, struct can2040_msg *msg)
 {
-    // Put your code here....
     xQueueSendToBack(msgs, msg, portMAX_DELAY);
 }
 
@@ -38,21 +41,81 @@ void canbus_setup(void)
     // Start canbus
     can2040_start(&cbus, sys_clock, bitrate, gpio_rx, gpio_tx);
 }
-void main_task(__unused void *params)
+
+// --------------------------------------------
+// RECEIVER TASK
+// --------------------------------------------
+void receiver_task(__unused void *params)
 {
-    struct can2040_msg data;
-    xQueueReceive(msgs, &data, portMAX_DELAY);
-    printf("Got message\n");
+    printf("Receiver ready.\n");
+    
+    while(1)
+    {
+        struct can2040_msg msg;
+        
+        xQueueReceive(msgs, &msg, portMAX_DELAY);
+        
+        printf("Received Message: ");
+        printf("%d %d %d %d\n",
+        (msg.data[0]),
+        (msg.data[1]),
+        (msg.data[2]),
+        (msg.data[3]));
+    }
+}
+
+// --------------------------------------------
+// TRANSMITTER TASK
+// --------------------------------------------
+void transmitter_task(__unused void *params)
+{
+    struct can2040_msg msg;
+
+    while (true) {
+        msg.id = 0;
+        msg.dlc = 4;
+
+        msg.data[0] = 1; 
+        msg.data[1] = 2;
+        msg.data[2] = 3;
+        msg.data[3] = 4;
+
+        printf("Sending CAN frame.\n");
+        can2040_transmit(&cbus, &msg);
+
+        vTaskDelay(pdMS_TO_TICKS(10000));
+    }
+}
+
+void blinker(__unused void *args)
+{
+    while (true) 
+    {
+        on = !on;
+        cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, on);
+        vTaskDelay(500);
+    }
 }
 
 int main(void)
 {
     stdio_init_all();
+
+    sleep_ms(2000);
+    
+    cyw43_arch_init();
+
     msgs = xQueueCreate(100, sizeof(struct can2040_msg));
     canbus_setup();
-    TaskHandle_t task;
-    xTaskCreate(main_task, "MainThread",
-                configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1UL, &task);
+
+    TaskHandle_t rec_task, transmit_task, blink;
+
+    //xTaskCreate(receiver_task, "ReceiverThread", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1UL, &rec_task);
+
+    xTaskCreate(transmitter_task, "TransmitterThread", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, &transmit_task);
+
+    xTaskCreate(blinker, "BlinkThread", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1UL, &blink);
+
     vTaskStartScheduler();
     return 0;
 }

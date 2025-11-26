@@ -1,6 +1,7 @@
 set(CAN_PATH "../lib/can2040")
 include ("../lib/can2040/can2040.cmake")
 
+
 # This is the main binary. List your C files here.
 add_executable(can
     can.c
@@ -19,7 +20,7 @@ target_link_libraries(can PRIVATE
   pico_stdlib
   pico_multicore
   pico_async_context_freertos
-    can2040
+  can2040
   FreeRTOS-Kernel-Heap4
 )
 
