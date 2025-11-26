@@ -87,6 +87,7 @@ void transmitter_task(__unused void *params)
     }
 }
 
+// Visual identification reference that the code is runnung.
 void blinker(__unused void *args)
 {
     while (true) 
@@ -110,6 +111,10 @@ int main(void)
 
     TaskHandle_t rec_task, transmit_task, blink;
 
+    /*
+    To run the code, comment out either the receive or transmit task,build and load it onto the first pico, then comment out the
+    task you just loaded, and uncomment the other task, rebuild the code and load it onto the second pico.
+    */
     //xTaskCreate(receiver_task, "ReceiverThread", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1UL, &rec_task);
 
     xTaskCreate(transmitter_task, "TransmitterThread", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, &transmit_task);
