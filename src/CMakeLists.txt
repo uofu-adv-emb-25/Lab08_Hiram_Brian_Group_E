@@ -4,7 +4,7 @@ include ("../lib/can2040/can2040.cmake")
 
 # This is the main binary. List your C files here.
 add_executable(can
-    can.c
+    cont_can.c
     )
 
 pico_set_program_name(can "test")
