@@ -59,17 +59,29 @@ void receiver_task(__unused void *params)
         
         #if BABBLING_NODE
             xQueueReceive(msgs, &msg, portMAX_DELAY);
-            //if (msg.id == 0x001) 
-            //{
-            //    continue;
-            //}
-                
-            printf("Received Message: ");
-            printf("%d %d %d %d\n",
-            (msg.data[0]),
-            (msg.data[1]),
-            (msg.data[2]),
-            (msg.data[3]));
+            
+            #if BUSY_WAIT < 100
+                if (msg.id == 0x001) 
+                    {
+                        continue;
+                    }
+                    
+                printf("Received Message: ");
+                printf("%d %d %d %d\n",
+                (msg.data[0]),
+                (msg.data[1]),
+                (msg.data[2]),
+                (msg.data[3]));
+
+            #else
+                printf("Received Message: ");
+                printf("%d %d %d %d\n",
+                (msg.data[0]),
+                (msg.data[1]),
+                (msg.data[2]),
+                (msg.data[3]));
+
+            #endif
 
 
         #else 
