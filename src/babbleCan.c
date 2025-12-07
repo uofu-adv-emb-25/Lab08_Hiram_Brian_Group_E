@@ -7,6 +7,10 @@
 #include <queue.h>
 #include "pico/cyw43_arch.h"
 
+
+#define BABBLING_NODE 1 // 1 = babble, 0 = important
+#define BUSY_WAIT 100   // delay timer on the babble
+
 static struct can2040 cbus;
 
 bool on;
@@ -53,14 +57,44 @@ void receiver_task(__unused void *params)
     {
         struct can2040_msg msg;
         
-        xQueueReceive(msgs, &msg, portMAX_DELAY);
-        
-        printf("Received Message: ");
-        printf("%d %d %d %d\n",
-        (msg.data[0]),
-        (msg.data[1]),
-        (msg.data[2]),
-        (msg.data[3]));
+        #if BABBLING_NODE
+            xQueueReceive(msgs, &msg, portMAX_DELAY);
+            //if (msg.id == 0x001) 
+            //{
+            //    continue;
+            //}
+                
+            printf("Received Message: ");
+            printf("%d %d %d %d\n",
+            (msg.data[0]),
+            (msg.data[1]),
+            (msg.data[2]),
+            (msg.data[3]));
+
+
+        #else 
+            xQueueReceive(msgs, &msg, portMAX_DELAY);
+            
+            #if BUSY_WAIT < 100
+                static uint32_t count = 0;
+                count++;
+
+                if ((count % 1000) == 0) 
+                {
+                    printf("Babble count: %lu\n", count);
+                }
+            
+            #else 
+                printf("Received Message: ");
+                printf("%d %d %d %d\n",
+                (msg.data[0]),
+                (msg.data[1]),
+                (msg.data[2]),
+                (msg.data[3]));
+
+            #endif
+
+        #endif
     }
 }
 
@@ -72,18 +106,33 @@ void transmitter_task(__unused void *params)
     struct can2040_msg msg;
 
     while (true) {
-        msg.id = 0x001;
-        msg.dlc = 4;
+        #if BABBLING_NODE
+            msg.id = 0x001;
+            msg.dlc = 4;
 
-        msg.data[0] = 1; 
-        msg.data[1] = 2;
-        msg.data[2] = 3;
-        msg.data[3] = 4;
+            msg.data[0] = 1; 
+            msg.data[1] = 2;
+            msg.data[2] = 3;
+            msg.data[3] = 4;
 
-        printf("Sending CAN frame.\n");
-        can2040_transmit(&cbus, &msg);
+            //printf("Sending CAN frame.\n");
+            can2040_transmit(&cbus, &msg);
 
-        vTaskDelay(pdMS_TO_TICKS(10000));
+            vTaskDelay(BUSY_WAIT);
+        #else
+            msg.id = 0x100;
+            msg.dlc = 4;
+
+            msg.data[0] = 5; 
+            msg.data[1] = 6;
+            msg.data[2] = 7;
+            msg.data[3] = 8;
+
+            //printf("Sending CAN frame.\n");
+            can2040_transmit(&cbus, &msg);
+
+            vTaskDelay(pdMS_TO_TICKS(1000));
+        #endif           
     }
 }
 
@@ -111,7 +160,7 @@ int main(void)
 
     TaskHandle_t rec_task, transmit_task, blink;
 
-    xTaskCreate(receiver_task, "ReceiverThread", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1UL, &rec_task);
+    xTaskCreate(receiver_task, "ReceiverThread", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 3UL, &rec_task);
 
     xTaskCreate(transmitter_task, "TransmitterThread", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1UL, &transmit_task);
 
