@@ -9,7 +9,7 @@
 
 
 #define BABBLING_NODE 1 // 1 = babble, 0 = important
-#define BUSY_WAIT 100   // delay timer on the babble
+#define BUSY_WAIT 1000   // delay timer on the babble
 
 static struct can2040 cbus;
 
